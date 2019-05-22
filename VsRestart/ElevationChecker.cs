@@ -1,10 +1,18 @@
-﻿using System;
-using System.Runtime.InteropServices;
+﻿// -----------------------------------------------------------------------
+// <copyright file="ElevationChecker.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
-namespace MidnightDevelopers.VisualStudio.VsRestart
+namespace Equilogic.VisualStudio.VsRestart
 {
+    using System;
+    using System.Runtime.InteropServices;
+
     internal static class ElevationChecker
     {
+        public const int TOKEN_QUERY = 0x00000008;
+
         public enum TokenInformation
         {
             TokenUser = 1,
@@ -38,45 +46,40 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
             MaxTokenInfoClass = 29
         }
 
-        enum TokenElevationType
+        private enum TokenElevationType
         {
             TokenElevationTypeDefault = 1,
             TokenElevationTypeFull = 2,
             TokenElevationTypeLimited = 3
         }
 
-        public struct TOKEN_ELEVATION
-        {
-            public UInt32 TokenIsElevated;
-        }
-
-        public const int TOKEN_QUERY = 0x00000008;
+        public static bool CanCheckElevation => IsVistaOrLater();
 
         public static bool IsElevated(IntPtr procHandle)
         {
-            IntPtr tokenHandle;
-
-            bool isOpenProcToken = NativeMethods.OpenProcessToken(procHandle, TOKEN_QUERY, out tokenHandle);
+            var isOpenProcToken = NativeMethods.OpenProcessToken(procHandle, TOKEN_QUERY, out var tokenHandle);
 
             try
             {
                 if (isOpenProcToken)
                 {
-
                     TOKEN_ELEVATION te;
                     te.TokenIsElevated = 0;
 
-                    IntPtr tokenInformation = Marshal.AllocHGlobal(0);
+                    var tokenInformation = Marshal.AllocHGlobal(0);
 
-                    int size = Marshal.SizeOf(Enum.GetUnderlyingType(typeof(TokenInformation)));
+                    var size = Marshal.SizeOf(Enum.GetUnderlyingType(typeof(TokenInformation)));
 
                     try
                     {
-                        uint returnLength;
-                        bool success = NativeMethods.GetTokenInformation(tokenHandle, TokenInformation.TokenElevationType, ref tokenInformation, size, out returnLength);
+                        var success = NativeMethods.GetTokenInformation(tokenHandle,
+                                                                        TokenInformation.TokenElevationType,
+                                                                        ref tokenInformation,
+                                                                        size,
+                                                                        out var returnLength);
                         if (success && size == returnLength)
                         {
-                            return (TokenElevationType)(int)tokenInformation == TokenElevationType.TokenElevationTypeFull;
+                            return (TokenElevationType) (int) tokenInformation == TokenElevationType.TokenElevationTypeFull;
                         }
                     }
                     finally
@@ -93,30 +96,14 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
             return false;
         }
 
-        public static bool CanCheckElevation
-        {
-            get
-            {
-                return IsVistaOrLater();
-            }
-        }
-
         private static bool IsVistaOrLater()
         {
-            return (Environment.OSVersion.Version.Major >= 6);
+            return Environment.OSVersion.Version.Major >= 6;
         }
-    }
 
-    internal static class NativeMethods
-    {
-        [DllImport("Advapi32.dll")]
-        public static extern bool OpenProcessToken(IntPtr processHandle, int desiredAccess, out IntPtr tokenHandle);
-
-        [DllImport("Advapi32.dll")]
-        public static extern bool GetTokenInformation(IntPtr tokenHandle, ElevationChecker.TokenInformation info, ref IntPtr tokenInformation, int tokenInformationLength, out uint returnLength);
-
-        [DllImport("kernel32.dll", SetLastError = true)]
-        [return: MarshalAs(UnmanagedType.Bool)]
-        public static extern bool CloseHandle(IntPtr hObject);
+        public struct TOKEN_ELEVATION
+        {
+            public uint TokenIsElevated;
+        }
     }
 }

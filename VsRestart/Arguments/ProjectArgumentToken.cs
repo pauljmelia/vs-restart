@@ -1,13 +1,13 @@
 ﻿// -----------------------------------------------------------------------
-// <copyright file="IArgumentToken.cs" company="Equilogic (Pty) Ltd">
+// <copyright file="ProjectArgumentToken.cs" company="Equilogic (Pty) Ltd">
 //     Copyright © Equilogic (Pty) Ltd. All rights reserved.
 // </copyright>
 // -----------------------------------------------------------------------
 
 namespace Equilogic.VisualStudio.VsRestart.Arguments
 {
-    internal interface IArgumentToken
+    internal class ProjectArgumentToken : BaseArgumentToken
     {
-        string Argument { get; }
+        public ProjectArgumentToken(string argument) : base(argument) { }
     }
 }

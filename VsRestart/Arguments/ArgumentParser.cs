@@ -1,9 +1,15 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Text.RegularExpressions;
+﻿// -----------------------------------------------------------------------
+// <copyright file="ArgumentParser.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
-namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
+namespace Equilogic.VisualStudio.VsRestart.Arguments
 {
+    using System.Collections.Generic;
+    using System.Linq;
+    using System.Text.RegularExpressions;
+
     internal class ArgumentParser
     {
         private readonly string _arguments;
@@ -15,7 +21,7 @@ namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
 
         public ArgumentTokenCollection GetArguments()
         {
-            ArgumentTokenCollection result = new ArgumentTokenCollection();
+            var result = new ArgumentTokenCollection();
             foreach (var argument in GetArgumentTokens())
             {
                 result.Add(argument);
@@ -27,20 +33,30 @@ namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
         private IEnumerable<IArgumentToken> GetArgumentTokens()
         {
             if (string.IsNullOrEmpty(_arguments))
+            {
                 yield break;
+            }
 
-            RegexOptions options = RegexOptions.None;
-            Regex regex = new Regex("(?<match>[^\\s\"]+)|(?<match>\"[^\"]*\")", options);
+            var options = RegexOptions.None;
+            var regex = new Regex("(?<match>[^\\s\"]+)|(?<match>\"[^\"]*\")", options);
 
-            var arguments = (regex.Matches(_arguments).Cast<Match>().Where(m => m.Groups["match"].Success).Select(m => m.Groups["match"].Value)).ToList();
+            var arguments = regex.Matches(_arguments).Cast<Match>().Where(m => m.Groups["match"].Success)
+                                 .Select(m => m.Groups["match"].Value).ToList();
 
             foreach (var argument in arguments)
             {
                 if (argument.ToLower().Contains(".sln"))
+                {
                     yield return new SolutionArgumentToken(argument);
+                }
                 else if (argument.ToLower().Contains(".*proj"))
+                {
                     yield return new ProjectArgumentToken(argument);
-                else yield return new GenericArgumentToken(argument);
+                }
+                else
+                {
+                    yield return new GenericArgumentToken(argument);
+                }
             }
         }
     }

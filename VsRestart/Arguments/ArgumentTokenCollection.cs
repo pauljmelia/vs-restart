@@ -1,15 +1,22 @@
-﻿using System.Collections;
-using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
+﻿// -----------------------------------------------------------------------
+// <copyright file="ArgumentTokenCollection.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
-namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
+namespace Equilogic.VisualStudio.VsRestart.Arguments
 {
+    using System.Collections;
+    using System.Collections.Generic;
+    using System.Diagnostics;
+    using System.Linq;
+    using System.Text;
+
     internal class ArgumentTokenCollection : IEnumerable<IArgumentToken>
     {
-        private readonly List<IArgumentToken> _arguments;
+        // ReSharper disable once UnusedMember.Global
         public static readonly ArgumentTokenCollection Empty = new ArgumentTokenCollection();
+        private readonly List<IArgumentToken> _arguments;
 
         public ArgumentTokenCollection()
         {
@@ -36,19 +43,9 @@ namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
             }
         }
 
-        public IEnumerator<IArgumentToken> GetEnumerator()
-        {
-            return _arguments.GetEnumerator();
-        }
-
-        IEnumerator IEnumerable.GetEnumerator()
-        {
-            return GetEnumerator();
-        }
-
         public override string ToString()
         {
-            StringBuilder sb = new StringBuilder();
+            var sb = new StringBuilder();
             using (var enumerator = GetEnumerator())
             {
                 if (enumerator.MoveNext())
@@ -64,5 +61,23 @@ namespace MidnightDevelopers.VisualStudio.VsRestart.Arguments
 
             return sb.ToString();
         }
+
+        #region  IEnumerable Members
+
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
+
+        #endregion
+
+        #region  IEnumerable<IArgumentToken> Members
+
+        public IEnumerator<IArgumentToken> GetEnumerator()
+        {
+            return _arguments.GetEnumerator();
+        }
+
+        #endregion
     }
 }

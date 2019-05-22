@@ -1,26 +1,50 @@
-﻿using System;
-using System.Diagnostics;
-using System.Linq;
-using System.Text;
-using EnvDTE;
-using Microsoft.VisualStudio.Shell;
-using Microsoft.VisualStudio.Shell.Interop;
-using MidnightDevelopers.VisualStudio.VsRestart.Arguments;
-using Process = System.Diagnostics.Process;
+﻿// -----------------------------------------------------------------------
+// <copyright file="VisualStudioRestart.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
-namespace MidnightDevelopers.VisualStudio.VsRestart
+// ReSharper disable InconsistentNaming
+// ReSharper disable UnusedMethodReturnValue.Local
+namespace Equilogic.VisualStudio.VsRestart
 {
-    internal class VisualStuioRestarter
+    using System;
+    using System.ComponentModel;
+    using System.Diagnostics;
+    using System.Linq;
+    using System.Text;
+
+    using Arguments;
+
+    using EnvDTE;
+
+    using Microsoft.VisualStudio.Shell;
+    using Microsoft.VisualStudio.Shell.Interop;
+
+    using Process = System.Diagnostics.Process;
+
+    internal class VisualStudioRestart
     {
+        private enum ProcessStartResult
+        {
+            Ok,
+            AuthDenied,
+            Exception
+        }
+
         internal void Restart(DTE dte, bool elevated)
         {
             var currentProcess = Process.GetCurrentProcess();
 
             var parser = new ArgumentParser(dte.CommandLineArguments);
 
+            if (currentProcess.MainModule == null)
+            {
+                return;
+            }
+
             var builder = new RestartProcessBuilder()
-                .WithDevenv(currentProcess.MainModule.FileName)
-                .WithArguments(parser.GetArguments());
+                          .WithDevenv(currentProcess.MainModule.FileName).WithArguments(parser.GetArguments());
 
             var openedItem = GetOpenedItem(dte);
             if (openedItem != OpenedItem.None)
@@ -50,11 +74,12 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
             }
 
             // Install the handler
+            // ReSharper disable once UnusedVariable
             var handler = new VisualStudioEventHandler(dte.Events.DTEEvents, closeCommandEvents, builder.Build());
 
             if (closeCommand != null && closeCommand.IsAvailable)
             {
-                // if the Exit commad is present, execute it with all gracefulls dialogs by VS
+                // if the Exit command is present, execute it with all graceful dialogs by VS
                 dte.ExecuteCommand(commandName);
             }
             else
@@ -70,10 +95,10 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
             {
                 if (string.IsNullOrEmpty(dte.Solution.FullName))
                 {
-                    Array activeProjects = (Array)dte.ActiveSolutionProjects;
+                    var activeProjects = (Array) dte.ActiveSolutionProjects;
                     if (activeProjects != null && activeProjects.Length > 0)
                     {
-                        var currentOpenedProject = (Project)activeProjects.GetValue(0);
+                        var currentOpenedProject = (Project) activeProjects.GetValue(0);
                         if (currentOpenedProject != null)
                         {
                             return new OpenedItem(currentOpenedProject.FullName, false);
@@ -89,25 +114,39 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
             return OpenedItem.None;
         }
 
-        private enum ProcessStartResult
+        private class OpenedItem
         {
-            Ok,
-            AuthDenied,
-            Exception,
+            public static readonly OpenedItem None = new OpenedItem(null, false);
+
+            public OpenedItem(string name, bool isSolution)
+            {
+                Name = name;
+                IsSolution = isSolution;
+            }
+
+            public bool IsSolution { get; }
+
+            public string Name { get; }
         }
 
         private class RestartProcessBuilder
         {
-            private string _solutionFile;
-            private string _devenv;
             private ArgumentTokenCollection _arguments;
+            private string _devenv;
             private string _projectFile;
-            private string _verb = null;
+            private string _solutionFile;
+            private string _verb;
 
-            public RestartProcessBuilder WithSolution(string solutionFile)
+            public ProcessStartInfo Build()
             {
-                _solutionFile = solutionFile;
-                return this;
+                return new ProcessStartInfo
+                       {
+                           FileName = _devenv,
+                           ErrorDialog = true,
+                           UseShellExecute = true,
+                           Verb = _verb,
+                           Arguments = BuildArguments()
+                       };
             }
 
             public RestartProcessBuilder WithArguments(ArgumentTokenCollection arguments)
@@ -122,28 +161,22 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
                 return this;
             }
 
-            public RestartProcessBuilder WithProject(string projectFile)
-            {
-                _projectFile = projectFile;
-                return this;
-            }
-
             public RestartProcessBuilder WithElevatedPermission()
             {
                 _verb = "runas";
                 return this;
             }
 
-            public ProcessStartInfo Build()
+            public RestartProcessBuilder WithProject(string projectFile)
             {
-                return new ProcessStartInfo
-                {
-                    FileName = _devenv,
-                    ErrorDialog = true,
-                    UseShellExecute = true,
-                    Verb = _verb,
-                    Arguments = BuildArguments(),
-                };
+                _projectFile = projectFile;
+                return this;
+            }
+
+            public RestartProcessBuilder WithSolution(string solutionFile)
+            {
+                _solutionFile = solutionFile;
+                return this;
             }
 
             private string BuildArguments()
@@ -180,40 +213,23 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
                     }
                 }
 
-                string escapedArguments = _arguments.ToString()
-                    .ReplaceSmart(Quote(_devenv), string.Empty);
+                var escapedArguments = _arguments.ToString().ReplaceSmart(Quote(_devenv), string.Empty);
 
                 return escapedArguments;
             }
 
-            private string Quote(string input)
-            {
-                return string.Format("\"{0}\"", input);
-            }
-        }
-
-        private class OpenedItem
-        {
-            public static readonly OpenedItem None = new OpenedItem(null, false);
-
-            public OpenedItem(string name, bool isSolution)
-            {
-                Name = name;
-                IsSolution = isSolution;
-            }
-
-            public string Name { get; private set; }
-
-            public bool IsSolution { get; set; }
+            private static string Quote(string input) => $"\"{input}\"";
         }
 
         private class VisualStudioEventHandler
         {
-            private readonly ProcessStartInfo _startInfo;
             private readonly CommandEvents _closeCommandEvents;
             private readonly DTEEvents _dTEEvents;
+            private readonly ProcessStartInfo _startInfo;
 
-            public VisualStudioEventHandler(DTEEvents dTEEvents, CommandEvents closeCommandEvents, ProcessStartInfo processStartInfo)
+            public VisualStudioEventHandler(DTEEvents dTEEvents,
+                                            CommandEvents closeCommandEvents,
+                                            ProcessStartInfo processStartInfo)
             {
                 _dTEEvents = dTEEvents;
                 _closeCommandEvents = closeCommandEvents;
@@ -226,26 +242,41 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
                 }
             }
 
-            void CommandEvents_AfterExecute(string guid, int id, object customIn, object customOut)
+            private static void DisplayError(Exception ex, ProcessStartResult status)
             {
-                _dTEEvents.OnBeginShutdown -= DTEEvents_OnBeginShutdown;
-                if (_closeCommandEvents != null)
+                if (!(Package.GetGlobalService(typeof(SVsGeneralOutputWindowPane)) is IVsOutputWindowPane outputPane))
                 {
-                    _closeCommandEvents.AfterExecute -= CommandEvents_AfterExecute;
+                    return;
                 }
+
+                outputPane.Activate();
+
+                if (status == ProcessStartResult.AuthDenied)
+                {
+                    outputPane.OutputString(
+                        "Visual Studio restart operation was cancelled by the user." + Environment.NewLine);
+                }
+                else
+                {
+                    var sb = new StringBuilder();
+                    sb.AppendLine(
+                        "An exceptions has been thrown while trying to start an elevated Visual Studio, see details below.");
+                    sb.AppendLine(ex.ToString());
+
+                    var diagnostics = sb.ToString();
+
+                    outputPane.OutputString(diagnostics);
+                    var log = Package.GetGlobalService(typeof(SVsActivityLog)) as IVsActivityLog;
+                    log?.LogEntry((uint) __ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, "Equilogic.VsRestart", diagnostics);
+                }
+
+                //EnvDTE.OutputWindow.OutputWindow.Parent.Activate();
             }
 
-            void DTEEvents_OnBeginShutdown()
+            private static ProcessStartResult StartProcessSafe(ProcessStartInfo startInfo,
+                                                               Action<Exception, ProcessStartResult> exceptionHandler)
             {
-                if (StartProcessSafe(_startInfo, DisplayError) == ProcessStartResult.Ok)
-                {
-                    //currentProcess.Kill();
-                }
-            }
-
-            private static ProcessStartResult StartProcessSafe(ProcessStartInfo startInfo, Action<Exception, ProcessStartResult> exceptionHandler)
-            {
-                ProcessStartResult result = ProcessStartResult.Ok;
+                var result = ProcessStartResult.Ok;
 
                 try
                 {
@@ -254,10 +285,9 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
                 catch (Exception ex)
                 {
                     result = ProcessStartResult.Exception;
-                    var winex = ex as System.ComponentModel.Win32Exception;
 
                     // User has denied auth through UAC
-                    if (winex != null && winex.NativeErrorCode == 1223)
+                    if (ex is Win32Exception winex && winex.NativeErrorCode == 1223)
                     {
                         result = ProcessStartResult.AuthDenied;
                     }
@@ -268,30 +298,21 @@ namespace MidnightDevelopers.VisualStudio.VsRestart
                 return result;
             }
 
-            private static void DisplayError(Exception ex, ProcessStartResult status)
+            private void CommandEvents_AfterExecute(string guid, int id, object customIn, object customOut)
             {
-                IVsOutputWindowPane outputPane = Package.GetGlobalService(typeof(SVsGeneralOutputWindowPane)) as IVsOutputWindowPane;
-
-                outputPane.Activate();
-
-                if (status == ProcessStartResult.AuthDenied)
+                _dTEEvents.OnBeginShutdown -= DTEEvents_OnBeginShutdown;
+                if (_closeCommandEvents != null)
                 {
-                    outputPane.OutputString("Visual Studio restart operation was cancelled by the user." + Environment.NewLine);
+                    _closeCommandEvents.AfterExecute -= CommandEvents_AfterExecute;
                 }
-                else
+            }
+
+            private void DTEEvents_OnBeginShutdown()
+            {
+                if (StartProcessSafe(_startInfo, DisplayError) == ProcessStartResult.Ok)
                 {
-                    StringBuilder sb = new StringBuilder();
-                    sb.AppendLine("An exceptions has been trown while trying to start an elevated Visual Studio, see details below.");
-                    sb.AppendLine(ex.ToString());
-
-                    string diagnostics = sb.ToString();
-
-                    outputPane.OutputString(diagnostics);
-                    IVsActivityLog log = Package.GetGlobalService(typeof(SVsActivityLog)) as IVsActivityLog;
-                    log.LogEntry((uint)__ACTIVITYLOG_ENTRYTYPE.ALE_ERROR, "MidnightDevelopers.VsRestarter", diagnostics);
+                    //currentProcess.Kill();
                 }
-
-                //EnvDTE.OutputWindow.OutputWindow.Parent.Activate();
             }
         }
     }

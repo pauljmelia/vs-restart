@@ -1,12 +1,15 @@
-﻿// PkgCmdID.cs
-// MUST match PkgCmdID.h
+﻿// -----------------------------------------------------------------------
+// <copyright file="MenuId.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
 
-namespace MidnightDevelopers.VisualStudio.VsRestart
+namespace Equilogic.VisualStudio.VsRestart
 {
-    static class MenuId
+    internal static class MenuId
     {
-        public const uint RestartAsAdmin = 0x100;
         public const uint Restart = 0x101;
+        public const uint RestartAsAdmin = 0x100;
 
         public const uint TopLevelMenuId = 0x201;
     }

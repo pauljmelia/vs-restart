@@ -71,7 +71,7 @@
 
   <Symbols>
     <!-- Package Symbols -->
-    <GuidSymbol name="guidProToolsPkg" value="{7c8887d9-d300-4e91-aadb-862a19a081ff}" />
+    <GuidSymbol name="guidProToolsPkg" value="{bf28bdb5-4844-4538-adc3-9416020ced24}" />
 
     <!-- Command Symbols. -->
     <GuidSymbol name="RestartCommandsGroup" value="{15dc28d5-04f4-4698-90e0-e3e16bc6894f}">

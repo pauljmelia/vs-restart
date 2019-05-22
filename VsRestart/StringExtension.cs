@@ -1,15 +1,16 @@
-﻿namespace MidnightDevelopers.VisualStudio.VsRestart
+﻿// -----------------------------------------------------------------------
+// <copyright file="StringExtension.cs" company="Equilogic (Pty) Ltd">
+//     Copyright © Equilogic (Pty) Ltd. All rights reserved.
+// </copyright>
+// -----------------------------------------------------------------------
+
+namespace Equilogic.VisualStudio.VsRestart
 {
     public static class StringExtension
     {
         public static string ReplaceSmart(this string value, string oldValue, string newValue)
         {
-            if (string.IsNullOrEmpty(oldValue))
-            {
-                return value;
-            }
-
-            return value.Replace(oldValue, newValue);
+            return string.IsNullOrEmpty(oldValue) ? value : value.Replace(oldValue, newValue);
         }
     }
 }
